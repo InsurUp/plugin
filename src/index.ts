@@ -12,4 +12,8 @@ export type { Ctx, DataApi, HttpApi, Logger } from './context';
 export type { EventHook, EventName, EventPayloads } from './events';
 export type { Fetch, PluginHeaders, PluginRequestInit, PluginResponse } from './http';
 export type { User, UserType } from './user';
-export type { CustomerType, CustomerView, PolicyView, ProductView, ProposalView } from './views';
+export type {
+  AgentInsuranceCompanyType, AssetType, CaseMainState, CaseSubState, CaseType, Channel, CustomerType,
+  EducationStatus, Gender, Job, MaritalStatus, Nationality, PaymentOption, ProductBranch, ProposalState,
+} from "./enums";
+export type { CustomerView, PolicyView, ProductView, ProposalView } from "./views";

@@ -3,8 +3,7 @@
  * are projected as strings (ISO-8601 for timestamps, `yyyy-MM-dd` for dates).
  */
 
-/** The kind of a customer. */
-export type CustomerType = 'individual' | 'company' | 'foreign';
+import type { CustomerType, ProductBranch, ProposalState } from "./enums";
 
 /** A customer, from `ctx.data.getCustomerById`. */
 export interface CustomerView {
@@ -22,8 +21,8 @@ export interface CustomerView {
 /** A proposal, from `ctx.data.getProposalById`. */
 export interface ProposalView {
   readonly id: string;
-  readonly productBranch: string;
-  readonly state: string;
+  readonly productBranch: ProductBranch;
+  readonly state: ProposalState;
   readonly insuredCustomerId: string;
   readonly insurerCustomerId: string;
   readonly lowestPremium: number | null;
@@ -35,7 +34,7 @@ export interface ProposalView {
 /** A policy, from `ctx.data.getPolicyById`. */
 export interface PolicyView {
   readonly id: string;
-  readonly productBranch: string;
+  readonly productBranch: ProductBranch;
   readonly insuredCustomerId: string;
   readonly insurerCustomerId: string;
   readonly insuranceCompanyId: number;
@@ -50,5 +49,5 @@ export interface ProductView {
   readonly id: number;
   readonly name: string | null;
   readonly insuranceCompanyId: number;
-  readonly productBranch: string | null;
+  readonly productBranch: ProductBranch | null;
 }

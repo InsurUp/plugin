@@ -6,6 +6,17 @@
  */
 
 import type { Ctx } from './context';
+import type {
+  AgentInsuranceCompanyType,
+  AssetType,
+  CaseMainState,
+  CaseSubState,
+  CaseType,
+  Channel,
+  CustomerType,
+  PaymentOption,
+  ProductBranch,
+} from './enums';
 
 /**
  * The payload delivered to each event hook, keyed by the hook's export name. All ids are strings;
@@ -17,10 +28,10 @@ export interface EventPayloads {
     proposalId: string;
     insuredCustomerId: string;
     insurerCustomerId: string;
-    productBranch: string;
-    assetType: string | null;
+    productBranch: ProductBranch;
+    assetType: AssetType | null;
     assetId: string | null;
-    channel: string;
+    channel: Channel;
   };
   /** A proposal product purchase was attempted. */
   onProposalProductPurchaseAttempted: {
@@ -31,8 +42,8 @@ export interface EventPayloads {
     installmentNumber: number;
     success: boolean;
     errorMessage: string | null;
-    channel: string;
-    paymentOption: string;
+    channel: Channel;
+    paymentOption: PaymentOption;
   };
   /** A premium was received for a proposal product. */
   onProposalProductPremiumReceived: {
@@ -56,7 +67,7 @@ export interface EventPayloads {
     isCancel: boolean;
     insuredCustomerId: string;
     insurerCustomerId: string;
-    productBranch: string;
+    productBranch: ProductBranch;
     startDate: string;
     endDate: string;
   };
@@ -68,7 +79,7 @@ export interface EventPayloads {
     productId: number;
     installmentNumber: number;
     insuranceCompanyId: number;
-    productBranch: string;
+    productBranch: ProductBranch;
     policyId: string | null;
   };
   /** An async policy-creation request was responded to. */
@@ -83,26 +94,26 @@ export interface EventPayloads {
   /** A customer was updated. */
   onCustomerUpdated: {
     customerId: string;
-    customerType: string;
+    customerType: CustomerType;
   };
   /** An asset was created. */
   onAssetCreated: {
     customerId: string;
     assetId: string;
-    assetType: string;
+    assetType: AssetType;
   };
   /** An asset was updated. */
   onAssetUpdated: {
     customerId: string;
     assetId: string;
-    assetType: string;
+    assetType: AssetType;
   };
   /** An asset's policy coverage changed. */
   onAssetPolicyChanged: {
     customerId: string;
     assetId: string;
-    assetType: string;
-    productBranch: string;
+    assetType: AssetType;
+    productBranch: ProductBranch;
     policyEndDate: string | null;
     policyInsuranceCompanyId: number | null;
   };
@@ -111,16 +122,16 @@ export interface EventPayloads {
     id: string;
     ref: string;
     customerId: string;
-    type: string;
-    productBranch: string | null;
+    type: CaseType;
+    productBranch: ProductBranch | null;
   };
   /** A case changed state. */
   onCaseStateChanged: {
     id: string;
     ref: string;
     customerId: string;
-    state: string;
-    subState: string;
+    state: CaseMainState;
+    subState: CaseSubState;
   };
   /** An agent was created. */
   onAgentCreated: {
@@ -130,13 +141,13 @@ export interface EventPayloads {
   onAgentInsuranceCompanyUpdated: {
     agentInsuranceCompanyId: string;
     insuranceCompanyId: number;
-    type: string;
+    type: AgentInsuranceCompanyType;
   };
   /** An agent's insurance-company link was removed. */
   onAgentInsuranceCompanyRemoved: {
     agentInsuranceCompanyId: string;
     insuranceCompanyReference: number;
-    type: string;
+    type: AgentInsuranceCompanyType;
   };
   /** An agent user was created. */
   onAgentUserCreated: {
