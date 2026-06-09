@@ -35,7 +35,7 @@
     "@types/bun": "latest",
     "eslint": "^9",
     "jiti": "^2",
-    "typescript": "^5",
+    "typescript": "^6",
     "typescript-eslint": "^8"
   }
 }
