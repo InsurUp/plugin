@@ -1,0 +1,110 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Resolve version from tag
+        id: v
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set package version to the release version
+        run: |
+          jq --arg v "${{ steps.v.outputs.VERSION }}" '.version = $v' package.json > pkg.tmp
+          mv pkg.tmp package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit the version bump back to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json bun.lock
+          git diff --staged --quiet || git commit -m "chore: release v${{ steps.v.outputs.VERSION }}"
+          git push origin HEAD:main
+
+  homebrew:
+    needs: npm
+    runs-on: ubuntu-latest
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - name: Skip when tap token is not configured
+        if: ${{ env.TAP_TOKEN == '' }}
+        run: echo "HOMEBREW_TAP_TOKEN is not set; skipping Homebrew tap update."
+
+      - uses: actions/checkout@v6
+        if: ${{ env.TAP_TOKEN != '' }}
+
+      - uses: actions/setup-node@v6
+        if: ${{ env.TAP_TOKEN != '' }}
+        with:
+          node-version: 22
+
+      - name: Resolve version from tag
+        if: ${{ env.TAP_TOKEN != '' }}
+        id: v
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download published npm tarball
+        if: ${{ env.TAP_TOKEN != '' }}
+        run: |
+          mkdir -p out
+          for attempt in {1..12}; do
+            url="$(npm view "@insurup/plugin@${VERSION}" dist.tarball 2>/dev/null || true)"
+            if [ -n "$url" ]; then
+              curl -fsSL "$url" -o out/plugin.tgz
+              echo "TARBALL_URL=$url" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "npm tarball for @insurup/plugin@${VERSION} was not visible after waiting"
+          exit 1
+        env:
+          VERSION: ${{ steps.v.outputs.VERSION }}
+
+      - name: Update the Homebrew tap
+        if: ${{ env.TAP_TOKEN != '' }}
+        run: bash packaging/homebrew/update-tap.sh "${{ steps.v.outputs.VERSION }}" out/plugin.tgz
+        env:
+          TAP_TOKEN: ${{ env.TAP_TOKEN }}

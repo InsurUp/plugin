@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "description": "TypeScript authoring SDK for InsurUp plugins — typed config, context, and event hooks.",
   "type": "module",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
   "sideEffects": false,
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -24,7 +27,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "bun test"
+    "test": "bun test",
+    "test:coverage": "bun test --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9",
