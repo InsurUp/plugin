@@ -133,10 +133,6 @@ export interface EventPayloads {
     state: CaseMainState;
     subState: CaseSubState;
   };
-  /** An agent was created. */
-  onAgentCreated: {
-    robotMode: string;
-  };
   /** An agent's insurance-company link was updated. */
   onAgentInsuranceCompanyUpdated: {
     agentInsuranceCompanyId: string;

@@ -1,8 +1,8 @@
 # @insurup/plugin
 
-TypeScript authoring SDK for InsurUp plugins. Gives you a typed `ctx`, typed event payloads, a typed
-config (that doubles as the JSON Schema the host reads), and the host-injected global `fetch` — all
-hand-written, zero runtime except {@link defineConfig}.
+TypeScript authoring SDK for InsurUp plugins. Gives you a typed `ctx`, typed payloads for every hook
+(events, validation, and transformation), a typed config (that doubles as the JSON Schema the host
+reads), and the host-injected global `fetch` — all hand-written, zero runtime except {@link defineConfig}.
 
 > Plugins run server-side, in-process, on the Jint JS engine, per agent. This package is the contract
 > authors write against; the host inlines it at build time.
@@ -30,8 +30,9 @@ Add the ambient `fetch` typing to your plugin's `tsconfig.json`, and keep the DO
 
 ## Authoring a plugin
 
-A plugin is an ES module. Export a `configSchema` (optional) and one function per event, named after
-the event. The host derives the hooks from the export names.
+A plugin is an ES module. Export a `configSchema` (optional) and one function per hook, named after the
+hook. The host derives the hooks from the export names — `on*` for events, `validate*` for validation,
+`transform*` for transformation.
 
 ```ts
 import { defineConfig, type EventHook, type Infer } from '@insurup/plugin';
@@ -85,7 +86,49 @@ rest and masked in API responses.
 ### Events
 
 Export a function named after the event. Each receives `(ctx, event)`; annotate with
-`EventHook<'onEventName', Config>`. See `EventPayloads` for every event and its payload shape.
+`EventHook<'onEventName', Config>`. See `EventPayloads` for every event and its payload shape. Event
+hooks run **asynchronously** after the operation commits — they cannot block or change it.
+
+### Validation hooks
+
+Export `validateCustomerCreate`, `validateCustomerUpdate`, `validateProposalCreate`, or
+`validateProposalProductRevise`. Each runs **synchronously in the request path** and must return a
+`ValidationResult` (`{ ok }` or `{ ok: false, errors }`). Validation is **fail-closed**: the operation
+proceeds only when every matching plugin approves — a rejection, a thrown error, a timeout, or a plugin
+that can't run all block the operation (HTTP 422). Annotate with `ValidationHook<'validateX', Config>`.
+
+```ts
+import { type ValidationHook } from '@insurup/plugin';
+
+export const validateCustomerCreate: ValidationHook<'validateCustomerCreate', Config> = (ctx, input) => {
+  if (input.email !== null && input.email.endsWith('@blocked.example')) {
+    return { ok: false, errors: [{ field: 'email', message: 'This email domain is not allowed' }] };
+  }
+  return { ok: true };
+};
+```
+
+### Transformation hooks
+
+Export `transformCustomerCreate` / `transformCustomerUpdate` (reshape the customer's soft fields) or one
+of the `transformIgw*` hooks (add keys to an outbound InsurGateway request). Each runs **synchronously in
+the request path** and returns the change to apply — or nothing, for no change. Transformation is
+**fail-open**: a hook that throws, times out, or returns an invalid shape simply contributes no change and
+never blocks. Annotate with `TransformHook<'transformX', Config>`.
+
+- **Customer** hooks return a `CustomerTransform` — only the soft fields you want to overwrite. Identity
+  number, tax number, and customer type can never be changed.
+- **InsurGateway** hooks return `IgwKeyAdditions` (`Record<string, string[]>`) — new keys only; existing
+  and protected keys are never overwritten or removed.
+
+```ts
+import { type TransformHook } from '@insurup/plugin';
+
+export const transformCustomerCreate: TransformHook<'transformCustomerCreate', Config> = (ctx, input) => {
+  if (input.fullName === null) return; // no change
+  return { fullName: input.fullName.toLocaleUpperCase('tr-TR') };
+};
+```
 
 ### `ctx`
 
@@ -123,5 +166,10 @@ bun run lint
 
 ## Scope
 
-Event hooks only. Sync hooks (validate/mutate customer, decorate IGW request) are not yet part of the
-contract.
+Three hook categories, all derived from the export name:
+
+| Category | Exports | Timing | Failure mode |
+| --- | --- | --- | --- |
+| **Event** | `on*` (e.g. `onCustomerUpdated`) | async, after commit | fire-and-forget |
+| **Validation** | `validateCustomerCreate` · `validateCustomerUpdate` · `validateProposalCreate` · `validateProposalProductRevise` | sync, in request path | fail-closed (blocks on anything but `{ ok: true }`) |
+| **Transformation** | `transformCustomerCreate` · `transformCustomerUpdate` · `transformIgwProposalCreate` · `transformIgwPolicyCreate` · `transformIgwTramer` · `transformIgwMernis` | sync, in request path | fail-open (no change on failure) |
