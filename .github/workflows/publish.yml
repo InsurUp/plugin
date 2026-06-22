@@ -11,7 +11,7 @@ jobs:
   npm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -72,7 +72,7 @@ jobs:
         if: ${{ env.TAP_TOKEN == '' }}
         run: echo "HOMEBREW_TAP_TOKEN is not set; skipping Homebrew tap update."
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: ${{ env.TAP_TOKEN != '' }}
 
       - uses: actions/setup-node@v6
