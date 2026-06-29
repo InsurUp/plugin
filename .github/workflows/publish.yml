@@ -11,7 +11,7 @@ jobs:
   npm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -22,7 +22,7 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
@@ -72,7 +72,7 @@ jobs:
         if: ${{ env.TAP_TOKEN == '' }}
         run: echo "HOMEBREW_TAP_TOKEN is not set; skipping Homebrew tap update."
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: ${{ env.TAP_TOKEN != '' }}
 
       - uses: actions/setup-node@v6
