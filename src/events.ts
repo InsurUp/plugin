@@ -71,7 +71,7 @@ export interface EventPayloads {
     startDate: string;
     endDate: string;
   };
-  /** A policy was received from the insurer. */
+  /** A policy was received from the insurance company. */
   onPolicyReceived: {
     success: boolean;
     errorMessage: string | null;
