@@ -14,8 +14,8 @@ export type { EventHook, EventName, EventPayloads } from './events';
 export type { Fetch, PluginHeaders, PluginRequestInit, PluginResponse } from './http';
 export type {
   CustomerCreateValidationInput, CustomerUpdateValidationInput, ProposalCreateValidationInput,
-  ProposalProductReviseValidationInput, ValidationError, ValidationHook, ValidationName,
-  ValidationPayloads, ValidationResult,
+  ProposalProductPurchaseValidationInput, ProposalProductReviseValidationInput, ValidationError,
+  ValidationHook, ValidationName, ValidationPayloads, ValidationResult,
 } from './validation';
 export type {
   CustomerCreateTransformInput, CustomerTransform, CustomerUpdateTransformInput, IgwKeyAdditions,

@@ -10,7 +10,7 @@
  */
 
 import type { Ctx } from './context';
-import type { Channel, CustomerType, Nationality, ProductBranch } from './enums';
+import type { Channel, CustomerType, Nationality, PaymentOption, ProductBranch } from './enums';
 
 /** Input to `validateCustomerCreate`: the customer being created (carries PII; stays in-process). */
 export interface CustomerCreateValidationInput {
@@ -86,6 +86,26 @@ export interface ProposalProductReviseValidationInput {
   insuranceCompanyId: number;
 }
 
+/** Input to `validateProposalProductPurchase`: the proposal product being purchased. */
+export interface ProposalProductPurchaseValidationInput {
+  /** The proposal's id. */
+  proposalId: string;
+  /** The proposal product's id being purchased. */
+  proposalProductId: string;
+  /** The proposal's product branch. */
+  productBranch: ProductBranch;
+  /** The insurance product id of the product being purchased. */
+  insuranceProductId: number;
+  /** The insurance company id of the product being purchased. */
+  insuranceCompanyId: number;
+  /** The channel the proposal was created through. */
+  channel: Channel;
+  /** The installment count the purchase is made with. */
+  installmentNumber: number;
+  /** The payment method the purchase is made with. */
+  paymentOption: PaymentOption;
+}
+
 /**
  * The input delivered to each validation hook, keyed by the hook's export name. All ids are strings;
  * dates are `yyyy-MM-dd`.
@@ -99,6 +119,8 @@ export interface ValidationPayloads {
   validateProposalCreate: ProposalCreateValidationInput;
   /** A proposal product is being revised. */
   validateProposalProductRevise: ProposalProductReviseValidationInput;
+  /** A proposal product is being purchased. */
+  validateProposalProductPurchase: ProposalProductPurchaseValidationInput;
 }
 
 /** The name of a validation hook (one of the keys of {@link ValidationPayloads}). */

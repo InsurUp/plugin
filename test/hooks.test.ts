@@ -54,6 +54,36 @@ describe('ValidationHook', () => {
   });
 });
 
+describe('ValidationHook for a purchase', () => {
+  const sold = ['KASKO', 'TRAFIK'];
+  const validateProposalProductPurchase: ValidationHook<'validateProposalProductPurchase', Config> = (_ctx, input) =>
+    sold.includes(input.productBranch)
+      ? { ok: true }
+      : { ok: false, errors: [{ field: 'productBranch', message: `${input.productBranch} is not sold here` }] };
+
+  const purchase = {
+    proposalId: 'proposal-1',
+    proposalProductId: 'product-1',
+    insuranceProductId: 7,
+    insuranceCompanyId: 45,
+    channel: 'MANUAL',
+    installmentNumber: 3,
+    paymentOption: 'SYNC_OPEN_ACCOUNT',
+  } as const;
+
+  test('approves a branch that is sold', async () => {
+    const verdict = await validateProposalProductPurchase(ctx, { ...purchase, productBranch: 'KASKO' });
+
+    expect(verdict).toEqual({ ok: true });
+  });
+
+  test('refuses another branch with a field error', async () => {
+    const verdict = await validateProposalProductPurchase(ctx, { ...purchase, productBranch: 'TSS' });
+
+    expect(verdict).toEqual({ ok: false, errors: [{ field: 'productBranch', message: 'TSS is not sold here' }] });
+  });
+});
+
 describe('TransformHook', () => {
   test('customer transform returns only the changed soft fields', async () => {
     const transformCustomerCreate: TransformHook<'transformCustomerCreate', Config> = (_ctx, input) => {
