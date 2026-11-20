@@ -16,6 +16,7 @@ import type {
   CustomerType,
   PaymentOption,
   ProductBranch,
+  ProposalErrorSource,
 } from './enums';
 
 /**
@@ -53,6 +54,8 @@ export interface EventPayloads {
     insuranceCompanyId: number;
     insuranceProposalReference: string;
     needsInvestigationByCompany: boolean;
+    /** Who has to act on a failed premium; null on success or when it is not classified. */
+    errorSource: ProposalErrorSource | null;
   };
   /** Coverage was received for a proposal product. */
   onProposalProductCoverageReceived: {
@@ -91,10 +94,21 @@ export interface EventPayloads {
     installmentNumber: number;
     policyId: string | null;
   };
+  /** A customer was created, from the agent panel or the customer's own sign-up. */
+  onCustomerCreated: {
+    customerId: string;
+    customerType: CustomerType;
+    /** The customer's primary email address, if any. */
+    email: string | null;
+    /** The channel the customer was created through. */
+    creationChannel: Channel;
+  };
   /** A customer was updated. */
   onCustomerUpdated: {
     customerId: string;
     customerType: CustomerType;
+    /** The customer's primary email address, if any. */
+    email: string | null;
   };
   /** An asset was created. */
   onAssetCreated: {

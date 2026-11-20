@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { Ctx } from '../src/context';
+import type { EventHook } from '../src/events';
+import type { RenderHook } from '../src/render';
 import type { TransformHook } from '../src/transform';
 import type { ValidationHook } from '../src/validation';
+import type { CustomerView, PolicyView } from '../src/views';
 
 interface Config {
   blockedDomain: string;
@@ -106,9 +109,31 @@ describe('TransformHook', () => {
         educationStatus: null,
         nationality: null,
         job: null,
+        cityReference: null,
+        districtReference: null,
         channel: 'WEBSITE',
       }),
     ).toEqual({ fullName: 'ADA' });
+  });
+
+  test('vehicle lookup answers with the fields it knows', async () => {
+    const transformVehicleExternalLookup: TransformHook<'transformVehicleExternalLookup', Config> = (_ctx, input) =>
+      input.plateCode === null ? undefined : { modelYear: 2021, fuelType: 'DIESEL' };
+
+    const lookup = {
+      customerType: 'INDIVIDUAL',
+      identityNumber: '11111111111',
+      taxNumber: null,
+      plateCity: 34,
+      documentSerialCode: null,
+      documentSerialNumber: null,
+    } as const;
+
+    expect(await transformVehicleExternalLookup(ctx, { ...lookup, plateCode: 'ABC123' })).toEqual({
+      modelYear: 2021,
+      fuelType: 'DIESEL',
+    });
+    expect(await transformVehicleExternalLookup(ctx, { ...lookup, plateCode: null })).toBeUndefined();
   });
 
   test('igw transform returns additions-only keys', async () => {
@@ -119,5 +144,81 @@ describe('TransformHook', () => {
     expect(await transformIgwProposalCreate(ctx, { keys: {}, productBranch: 'KASKO', insuranceCompanyId: null })).toEqual(
       { AcenteRef: ['42'] },
     );
+  });
+});
+
+describe('RenderHook', () => {
+  const customer: CustomerView = {
+    id: 'customer-1',
+    type: 'INDIVIDUAL',
+    name: 'Ada Lovelace',
+    city: null,
+    district: null,
+    policyCount: 3,
+    proposalCount: 5,
+    createdAt: '2026-01-01T00:00:00+00:00',
+    metadata: { segment: 'gold' },
+  };
+
+  test('columns hook returns one cell per row', async () => {
+    const renderCustomerColumns: RenderHook<'renderCustomerColumns', Config> = (_ctx, input) => ({
+      columns: [{ key: 'segment', title: 'Segment', hiddenByDefault: true }],
+      cells: input.rows.map((row) => {
+        const segment = row.metadata?.segment;
+        return { rowId: row.id, key: 'segment', html: typeof segment === 'string' ? segment : '' };
+      }),
+    });
+
+    expect(await renderCustomerColumns(ctx, { rows: [customer] })).toEqual({
+      columns: [{ key: 'segment', title: 'Segment', hiddenByDefault: true }],
+      cells: [{ rowId: 'customer-1', key: 'segment', html: 'gold' }],
+    });
+  });
+
+  test('detail hook reads the entity and its customer from the input', async () => {
+    const policy: PolicyView = {
+      id: 'policy-1',
+      productBranch: 'KASKO',
+      insuredCustomerId: 'customer-1',
+      insurerCustomerId: 'customer-1',
+      insuredCustomer: { id: 'customer-1', name: 'Ada Lovelace', metadata: null },
+      insurerCustomer: null,
+      insuranceCompanyId: null,
+      startDate: '2026-01-01',
+      endDate: '2027-01-01',
+      netPremium: 100,
+      grossPremium: 118,
+      currency: 'TURKISH_LIRA',
+      channel: 'WEBSITE',
+      state: 'ACTIVE',
+      metadata: null,
+    };
+    const renderPolicyDetail: RenderHook<'renderPolicyDetail', Config> = (_ctx, input) => ({
+      title: 'Owner',
+      fields: [{ key: 'insured', title: 'Insured', html: input.policy.insuredCustomer?.name ?? '-' }],
+    });
+
+    expect(await renderPolicyDetail(ctx, { policy })).toEqual({
+      title: 'Owner',
+      fields: [{ key: 'insured', title: 'Insured', html: 'Ada Lovelace' }],
+    });
+  });
+});
+
+describe('EventHook', () => {
+  test('onCustomerCreated carries the email and the creation channel', async () => {
+    const seen: string[] = [];
+    const onCustomerCreated: EventHook<'onCustomerCreated', Config> = (_ctx, event) => {
+      seen.push(`${event.customerId} ${event.email ?? '-'} ${event.creationChannel}`);
+    };
+
+    await onCustomerCreated(ctx, {
+      customerId: 'customer-1',
+      customerType: 'INDIVIDUAL',
+      email: null,
+      creationChannel: 'WEBSITE',
+    });
+
+    expect(seen).toEqual(['customer-1 - WEBSITE']);
   });
 });

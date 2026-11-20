@@ -10,7 +10,14 @@
  */
 
 import type { Ctx } from './context';
-import type { Channel, CustomerType, Nationality, PaymentOption, ProductBranch } from './enums';
+import type {
+  Channel,
+  CustomerType,
+  Nationality,
+  PaymentOption,
+  ProductBranch,
+  VehicleUtilizationStyle,
+} from './enums';
 
 /** Input to `validateCustomerCreate`: the customer being created (carries PII; stays in-process). */
 export interface CustomerCreateValidationInput {
@@ -56,6 +63,17 @@ export interface CustomerUpdateValidationInput {
   nationality: Nationality | null;
 }
 
+/**
+ * The vehicle a vehicle-branch proposal is created for. It carries no identifying numbers: the chassis
+ * number travels as its length only.
+ */
+export interface ProposalVehicle {
+  /** The vehicle's utilization style (e.g. `PRIVATE_CAR`, `TRACTOR`). */
+  utilizationStyle: VehicleUtilizationStyle;
+  /** The number of characters in the vehicle's chassis number. */
+  chassisNumberLength: number;
+}
+
 /** Input to `validateProposalCreate`: the proposal being created. */
 export interface ProposalCreateValidationInput {
   /** The product branch (e.g. `KASKO`, `TRAFIK`, `DASK`). */
@@ -70,6 +88,8 @@ export interface ProposalCreateValidationInput {
   coverageGroupIds: string[] | null;
   /** The requested policy start date (`yyyy-MM-dd`), if supplied. */
   policyStartDate: string | null;
+  /** The vehicle the proposal is for; null outside the vehicle branches. */
+  vehicle: ProposalVehicle | null;
 }
 
 /** Input to `validateProposalProductRevise`: the proposal product being revised. */

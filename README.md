@@ -1,7 +1,7 @@
 # @insurup/plugin
 
 TypeScript authoring SDK for InsurUp plugins. Gives you a typed `ctx`, typed payloads for every hook
-(events, validation, and transformation), a typed config (that doubles as the JSON Schema the host
+(events, validation, transformation, and rendering), a typed config (that doubles as the JSON Schema the host
 reads), and the host-injected global `fetch` — all hand-written, zero runtime except {@link defineConfig}.
 
 > Plugins run server-side, in-process, on the Jint JS engine, per agent. This package is the contract
@@ -32,7 +32,7 @@ Add the ambient `fetch` typing to your plugin's `tsconfig.json`, and keep the DO
 
 A plugin is an ES module. Export a `configSchema` (optional) and one function per hook, named after the
 hook. The host derives the hooks from the export names — `on*` for events, `validate*` for validation,
-`transform*` for transformation.
+`transform*` for transformation, `render*` for rendering.
 
 ```ts
 import { defineConfig, type EventHook, type Infer } from '@insurup/plugin';
@@ -110,7 +110,9 @@ export const validateCustomerCreate: ValidationHook<'validateCustomerCreate', Co
 
 ### Transformation hooks
 
-Export `transformCustomerCreate` / `transformCustomerUpdate` (reshape the customer's soft fields) or one
+Export `transformCustomerCreate` / `transformCustomerUpdate` (reshape the customer's soft fields),
+`transformVehicleCreate` (reshape a vehicle being added), `transformCustomerExternalLookup` /
+`transformVehicleExternalLookup` (answer a customer or vehicle lookup from an outside system), or one
 of the `transformIgw*` hooks (add keys to an outbound InsurGateway request). Each runs **synchronously in
 the request path** and returns the change to apply — or nothing, for no change. Transformation is
 **fail-open**: a hook that throws, times out, or returns an invalid shape simply contributes no change and
@@ -118,6 +120,10 @@ never blocks. Annotate with `TransformHook<'transformX', Config>`.
 
 - **Customer** hooks return a `CustomerTransform` — only the soft fields you want to overwrite. Identity
   number, tax number, and customer type can never be changed.
+- **Vehicle** hooks return a `VehicleTransform` — only the fields you want to overwrite. The owning
+  customer and the plate can never be changed.
+- The two **external lookup** hooks run when an agent looks a customer or a vehicle up before filling
+  the form. Their fields win over the MERNIS / TRAMER answer, which only fills what they left empty.
 - **InsurGateway** hooks return `IgwKeyAdditions` (`Record<string, string[]>`) — new keys only; existing
   and protected keys are never overwritten or removed.
 
@@ -130,6 +136,36 @@ export const transformCustomerCreate: TransformHook<'transformCustomerCreate', C
 };
 ```
 
+### Render hooks
+
+Export `renderCustomerColumns`, `renderCaseColumns`, `renderProposalColumns` or `renderPolicyColumns` to
+add columns to a grid in the agent panel, and `renderCustomerDetail`, `renderCaseDetail`,
+`renderProposalDetail` or `renderPolicyDetail` to add sections to a detail page. Each runs
+**synchronously while the page loads** and is **fail-open**: a hook that throws, times out, or returns an
+invalid shape simply shows nothing. Annotate with `RenderHook<'renderX', Config>`.
+
+A render hook is side-effect-free and gets no `ctx.data`, `ctx.write` or `fetch` budget: the rows (or the
+entity) arrive in its input, each with its customer's name and metadata attached. So the usual pattern is
+an event hook that stores something in metadata through `ctx.write`, and a render hook that shows it.
+
+```ts
+import { type RenderHook } from '@insurup/plugin';
+
+export const renderCustomerColumns: RenderHook<'renderCustomerColumns', Config> = (ctx, input) => ({
+  columns: [{ key: 'segment', title: 'Segment' }],
+  cells: input.rows.map((row) => ({
+    rowId: row.id,
+    key: 'segment',
+    html: row.policyCount > 2 ? '<span class="iu-p-badge iu-p-badge-success">Loyal</span>' : '',
+  })),
+});
+```
+
+The returned `html` is sanitized by the host: a small set of inline tags (`a`, `b`, `strong`, `i`, `em`,
+`s`, `u`, `small`, `code`, `span`, `br`, `ul`, `ol`, `li`), the `iu-p-*` classes (`iu-p-badge` and its
+`-success` / `-warning` / `-error` / `-info` variants, `iu-p-muted`, `iu-p-strong`, `iu-p-mono`), a few
+inline style properties, and `<icon name="...">` for a Fluent UI icon. Everything else is stripped.
+
 ### `ctx`
 
 | Member | Type |
@@ -139,7 +175,8 @@ export const transformCustomerCreate: TransformHook<'transformCustomerCreate', C
 | `ctx.user` | `User` |
 | `ctx.config` | your `Config` |
 | `ctx.log` | `debug \| info \| warn \| error(message, data?)` |
-| `ctx.data` | `getCustomerById` · `getProposalById` · `getPolicyById` · `getProductById` |
+| `ctx.data` | `getCustomerById` · `getCaseByRef` · `getProposalById` · `getPolicyById` · `getProductById` |
+| `ctx.write` | `mergeCustomerMetadata` · `mergeCaseMetadata` · `mergeProposalMetadata` · `mergePolicyMetadata` (event hooks only) |
 | `ctx.http.fetch` | alias of the global `fetch` |
 
 ### `fetch`
@@ -166,10 +203,11 @@ bun run lint
 
 ## Scope
 
-Three hook categories, all derived from the export name:
+Four hook categories, all derived from the export name:
 
 | Category | Exports | Timing | Failure mode |
 | --- | --- | --- | --- |
 | **Event** | `on*` (e.g. `onCustomerUpdated`) | async, after commit | fire-and-forget |
 | **Validation** | `validateCustomerCreate` · `validateCustomerUpdate` · `validateProposalCreate` · `validateProposalProductRevise` · `validateProposalProductPurchase` | sync, in request path | fail-closed (blocks on anything but `{ ok: true }`) |
-| **Transformation** | `transformCustomerCreate` · `transformCustomerUpdate` · `transformIgwProposalCreate` · `transformIgwPolicyCreate` · `transformIgwTramer` · `transformIgwMernis` | sync, in request path | fail-open (no change on failure) |
+| **Transformation** | `transformCustomerCreate` · `transformCustomerUpdate` · `transformCustomerExternalLookup` · `transformVehicleCreate` · `transformVehicleExternalLookup` · `transformIgwProposalCreate` · `transformIgwPolicyCreate` · `transformIgwTramer` · `transformIgwMernis` | sync, in request path | fail-open (no change on failure) |
+| **Render** | `render{Customer,Case,Proposal,Policy}Columns` · `render{Customer,Case,Proposal,Policy}Detail` | sync, while a page loads | fail-open (shows nothing on failure) |
