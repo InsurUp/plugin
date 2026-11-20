@@ -91,8 +91,8 @@ hooks run **asynchronously** after the operation commits — they cannot block o
 
 ### Validation hooks
 
-Export `validateCustomerCreate`, `validateCustomerUpdate`, `validateProposalCreate`, or
-`validateProposalProductRevise`. Each runs **synchronously in the request path** and must return a
+Export `validateCustomerCreate`, `validateCustomerUpdate`, `validateProposalCreate`,
+`validateProposalProductRevise`, or `validateProposalProductPurchase`. Each runs **synchronously in the request path** and must return a
 `ValidationResult` (`{ ok }` or `{ ok: false, errors }`). Validation is **fail-closed**: the operation
 proceeds only when every matching plugin approves — a rejection, a thrown error, a timeout, or a plugin
 that can't run all block the operation (HTTP 422). Annotate with `ValidationHook<'validateX', Config>`.
@@ -171,5 +171,5 @@ Three hook categories, all derived from the export name:
 | Category | Exports | Timing | Failure mode |
 | --- | --- | --- | --- |
 | **Event** | `on*` (e.g. `onCustomerUpdated`) | async, after commit | fire-and-forget |
-| **Validation** | `validateCustomerCreate` · `validateCustomerUpdate` · `validateProposalCreate` · `validateProposalProductRevise` | sync, in request path | fail-closed (blocks on anything but `{ ok: true }`) |
+| **Validation** | `validateCustomerCreate` · `validateCustomerUpdate` · `validateProposalCreate` · `validateProposalProductRevise` · `validateProposalProductPurchase` | sync, in request path | fail-closed (blocks on anything but `{ ok: true }`) |
 | **Transformation** | `transformCustomerCreate` · `transformCustomerUpdate` · `transformIgwProposalCreate` · `transformIgwPolicyCreate` · `transformIgwTramer` · `transformIgwMernis` | sync, in request path | fail-open (no change on failure) |
